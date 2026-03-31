@@ -28,6 +28,15 @@ const initDB = async () => {
         updated_at    TIMESTAMP DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS user_photos (
+        id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        photo_url  VARCHAR(500) NOT NULL,
+        is_primary BOOLEAN DEFAULT false,
+        sort_order INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
       CREATE TABLE IF NOT EXISTS connection_requests (
         id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         sender_id   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -53,6 +62,7 @@ const initDB = async () => {
       CREATE INDEX IF NOT EXISTS idx_messages_sender     ON messages(sender_id);
       CREATE INDEX IF NOT EXISTS idx_messages_receiver   ON messages(receiver_id);
       CREATE INDEX IF NOT EXISTS idx_users_location      ON users(location);
+      CREATE INDEX IF NOT EXISTS idx_user_photos_user    ON user_photos(user_id);
     `);
     console.log('✅ Database tables initialized successfully');
   } catch (err) {

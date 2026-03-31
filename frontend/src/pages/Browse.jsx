@@ -1,13 +1,52 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Briefcase, Heart, Search } from 'lucide-react';
+import { MapPin, Briefcase, Heart, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api';
 
-const NEPAL_DISTRICTS = [
-  'Kathmandu','Lalitpur','Bhaktapur','Pokhara','Chitwan','Butwal','Dharan','Biratnagar',
-  'Birgunj','Hetauda','Itahari','Janakpur','Nepalgunj','Dhangadhi','Mahendranagar',
-  'Syangja','Palpa','Baglung','Solukhumbu','Ilam','Jhapa','Morang','Sunsari'
-];
+function PhotoCarousel({ photos, profilePic, gender }) {
+  const [idx, setIdx] = useState(0);
+  const allPhotos = photos?.length > 0 ? photos.map(p => p.photo_url) : (profilePic ? [profilePic] : []);
+
+  if (allPhotos.length === 0) {
+    return (
+      <div className="profile-card-avatar">
+        {gender === 'female' ? '👩' : gender === 'male' ? '👨' : '🧑'}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ position: 'relative', width: '100%', height: 220 }}>
+      <img
+        src={allPhotos[idx]}
+        alt=""
+        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+      />
+      {allPhotos.length > 1 && (
+        <>
+          <button
+            onClick={e => { e.stopPropagation(); setIdx(i => (i - 1 + allPhotos.length) % allPhotos.length); }}
+            style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', border: 'none', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
+          ><ChevronLeft size={16} /></button>
+          <button
+            onClick={e => { e.stopPropagation(); setIdx(i => (i + 1) % allPhotos.length); }}
+            style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', border: 'none', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
+          ><ChevronRight size={16} /></button>
+          <div style={{ position: 'absolute', bottom: 8, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5 }}>
+            {allPhotos.map((_, i) => (
+              <div key={i} style={{ width: i === idx ? 16 : 6, height: 6, borderRadius: 3, background: i === idx ? 'white' : 'rgba(255,255,255,0.5)', transition: 'all 0.2s', cursor: 'pointer' }} onClick={e => { e.stopPropagation(); setIdx(i); }} />
+            ))}
+          </div>
+        </>
+      )}
+      {allPhotos.length > 1 && (
+        <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.5)', color: 'white', fontSize: '0.72rem', padding: '2px 8px', borderRadius: 12, fontWeight: 600 }}>
+          {idx + 1}/{allPhotos.length}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ProfileCard({ profile, onRequest }) {
   const [modal, setModal] = useState(false);
@@ -32,10 +71,7 @@ function ProfileCard({ profile, onRequest }) {
   return (
     <>
       <div className="profile-card fade-in">
-        {profile.profile_pic
-          ? <img className="profile-card-image" src={profile.profile_pic} alt={profile.name} />
-          : <div className="profile-card-avatar">{profile.gender === 'female' ? '👩' : profile.gender === 'male' ? '👨' : '🧑'}</div>
-        }
+        <PhotoCarousel photos={profile.photos} profilePic={profile.profile_pic} gender={profile.gender} />
         <div className="profile-card-body">
           <div className="profile-card-name">{profile.name}, {profile.age}</div>
           <div className="profile-card-meta">
@@ -48,14 +84,12 @@ function ProfileCard({ profile, onRequest }) {
               <span className="tag">💭 {profile.looking_for.substring(0, 40)}{profile.looking_for.length > 40 ? '…' : ''}</span>
             </div>
           )}
-          <div style={{ display: 'flex', gap: 8 }}>
-            {sent
-              ? <span className="btn btn-ghost btn-sm btn-full" style={{ justifyContent: 'center', cursor: 'default' }}>✓ Request Sent</span>
-              : <button className="btn btn-primary btn-sm btn-full" onClick={() => setModal(true)}>
-                  <Heart size={14} /> Connect
-                </button>
-            }
-          </div>
+          {sent
+            ? <span className="btn btn-ghost btn-sm btn-full" style={{ justifyContent: 'center', cursor: 'default' }}>✓ Request Sent</span>
+            : <button className="btn btn-primary btn-sm btn-full" onClick={() => setModal(true)}>
+                <Heart size={14} /> Connect
+              </button>
+          }
         </div>
       </div>
 
@@ -63,15 +97,13 @@ function ProfileCard({ profile, onRequest }) {
         <div className="modal-overlay" onClick={() => setModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h3 className="modal-title">Connect with {profile.name}</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: 20 }}>
-              Send a warm introduction — make it personal!
-            </p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: 20 }}>Send a warm introduction!</p>
             {profile.profile_pic
-              ? <img src={profile.profile_pic} alt="" style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', marginBottom: 16 }} />
-              : <div style={{ fontSize: '3rem', marginBottom: 16 }}>{profile.gender === 'female' ? '👩' : '👨'}</div>
+              ? <img src={profile.profile_pic} alt="" style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', marginBottom: 12 }} />
+              : <div style={{ fontSize: '3rem', marginBottom: 12 }}>{profile.gender === 'female' ? '👩' : '👨'}</div>
             }
-            <p style={{ fontWeight: 600, marginBottom: 4 }}>{profile.name}, {profile.age}</p>
-            {profile.job_title && <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 16 }}>{profile.job_title} · {profile.location}</p>}
+            <p style={{ fontWeight: 600, marginBottom: 2 }}>{profile.name}, {profile.age}</p>
+            {profile.location && <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 16 }}><MapPin size={12} style={{ marginRight: 3 }} />{profile.location}</p>}
             <div className="form-group">
               <label className="form-label">Your Message (optional)</label>
               <textarea
@@ -129,15 +161,18 @@ export default function Browse() {
     <div className="page">
       <div className="app-container">
         <h1 className="page-title">Discover People</h1>
-        <p className="page-subtitle">Find your साथी across Nepal</p>
+        <p className="page-subtitle">Find your साथी anywhere in the world</p>
 
         <div className="filter-bar">
           <div className="form-group">
             <label className="form-label">Location</label>
-            <select className="form-select" value={filters.location} onChange={e => setFilter('location', e.target.value)}>
-              <option value="">All Nepal</option>
-              {NEPAL_DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
+            <input
+              className="form-input"
+              placeholder="e.g. London, Kathmandu, New York…"
+              value={filters.location}
+              onChange={e => setFilter('location', e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && fetchProfiles()}
+            />
           </div>
           <div className="form-group">
             <label className="form-label">Min Age</label>

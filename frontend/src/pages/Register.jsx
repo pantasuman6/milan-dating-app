@@ -2,20 +2,9 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../components/AuthContext';
+import { X, Upload } from 'lucide-react';
 
-const NEPAL_DISTRICTS = [
-  'Kathmandu','Lalitpur','Bhaktapur','Pokhara','Chitwan','Butwal','Dharan','Biratnagar',
-  'Birgunj','Hetauda','Itahari','Janakpur','Nepalgunj','Dhangadhi','Mahendranagar',
-  'Syangja','Palpa','Baglung','Mustang','Manang','Solukhumbu','Taplejung','Ilam',
-  'Jhapa','Morang','Sunsari','Saptari','Siraha','Dhanusa','Mahottari','Sarlahi',
-  'Rautahat','Bara','Parsa','Nawalpur','Rupandehi','Kapilvastu','Arghakhanchi',
-  'Gulmi','Parbat','Kaski','Lamjung','Tanahu','Gorkha','Dhading','Nuwakot',
-  'Rasuwa','Sindhupalchok','Kavrepalanchok','Dolakha','Ramechhap','Sindhuli',
-  'Makwanpur','Okhaldhunga','Khotang','Udayapur','Bhojpur','Sankhuwasabha',
-  'Terhathum','Panchthar','Rolpa','Rukum','Salyan','Dang','Banke','Bardiya',
-  'Surkhet','Dailekh','Jajarkot','Dolpa','Mugu','Humla','Jumla','Kalikot',
-  'Achham','Bajura','Bajhang','Doti','Kailali','Kanchanpur'
-];
+const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 export default function Register() {
   const navigate = useNavigate();
@@ -26,12 +15,43 @@ export default function Register() {
     email: '', password: '', name: '', age: '', gender: '',
     job_title: '', bio: '', location: '', looking_for: '', match_gender_pref: 'any'
   });
+  const [emailError, setEmailError] = useState('');
+  const [photos, setPhotos] = useState([]); // { file, preview }
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleEmailChange = (e) => {
+    const val = e.target.value;
+    set('email', val);
+    if (val && !validateEmail(val)) {
+      setEmailError('Please enter a valid email address (e.g. name@example.com)');
+    } else {
+      setEmailError('');
+    }
+  };
+
+  const handlePhotoAdd = (e) => {
+    const files = Array.from(e.target.files);
+    const remaining = 5 - photos.length;
+    const toAdd = files.slice(0, remaining).map(file => ({
+      file,
+      preview: URL.createObjectURL(file)
+    }));
+    setPhotos(p => [...p, ...toAdd]);
+    e.target.value = '';
+  };
+
+  const removePhoto = (index) => {
+    setPhotos(p => {
+      URL.revokeObjectURL(p[index].preview);
+      return p.filter((_, i) => i !== index);
+    });
+  };
 
   const nextStep = () => {
     if (step === 1) {
       if (!form.email || !form.password || !form.name) return toast.error('Please fill all required fields');
+      if (!validateEmail(form.email)) return toast.error('Please enter a valid email address');
       if (form.password.length < 6) return toast.error('Password must be at least 6 characters');
     }
     if (step === 2) {
@@ -43,9 +63,22 @@ export default function Register() {
 
   const handleSubmit = async () => {
     if (!form.bio) return toast.error('Please write a short bio');
+    if (photos.length < 2) return toast.error('Please upload at least 2 photos');
+
     setLoading(true);
     try {
-      await register(form);
+      const { user } = await register(form);
+
+      // Upload photos after registration
+      const formData = new FormData();
+      photos.forEach(p => formData.append('photos', p.file));
+      const token = localStorage.getItem('milan_token');
+      await fetch('/api/profile/me/photos', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+
       toast.success('Welcome to Milan! 🌸');
       navigate('/browse');
     } catch (err) {
@@ -69,6 +102,7 @@ export default function Register() {
         </div>
 
         <div className="card" style={{ padding: 32 }}>
+          {/* STEP 1 */}
           {step === 1 && (
             <div className="fade-in">
               <h2 style={{ marginBottom: 6 }}>Account Details</h2>
@@ -79,7 +113,17 @@ export default function Register() {
               </div>
               <div className="form-group">
                 <label className="form-label">Email Address *</label>
-                <input className="form-input" type="email" placeholder="you@example.com" value={form.email} onChange={e => set('email', e.target.value)} />
+                <input
+                  className="form-input"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={form.email}
+                  onChange={handleEmailChange}
+                  style={{ borderColor: emailError ? '#C41E3A' : undefined }}
+                />
+                {emailError && (
+                  <p style={{ color: 'var(--crimson)', fontSize: '0.78rem', marginTop: 5 }}>⚠️ {emailError}</p>
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label">Password *</label>
@@ -88,6 +132,7 @@ export default function Register() {
             </div>
           )}
 
+          {/* STEP 2 */}
           {step === 2 && (
             <div className="fade-in">
               <h2 style={{ marginBottom: 6 }}>About You</h2>
@@ -113,21 +158,61 @@ export default function Register() {
               </div>
               <div className="form-group">
                 <label className="form-label">Location</label>
-                <select className="form-select" value={form.location} onChange={e => set('location', e.target.value)}>
-                  <option value="">Select District</option>
-                  {NEPAL_DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
+                <input
+                  className="form-input"
+                  placeholder="e.g. Kathmandu, Nepal · London, UK · New York, USA"
+                  value={form.location}
+                  onChange={e => set('location', e.target.value)}
+                />
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Enter your city and country</p>
               </div>
             </div>
           )}
 
+          {/* STEP 3 */}
           {step === 3 && (
             <div className="fade-in">
-              <h2 style={{ marginBottom: 6 }}>Your Story</h2>
+              <h2 style={{ marginBottom: 6 }}>Your Story & Photos</h2>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 24 }}>Help people get to know you</p>
+
+              {/* Photo Upload */}
+              <div className="form-group">
+                <label className="form-label">
+                  Photos * <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(min 2, max 5)</span>
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
+                  {photos.map((p, i) => (
+                    <div key={i} style={{ position: 'relative', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', border: '2px solid var(--border)' }}>
+                      <img src={p.preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {i === 0 && (
+                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(196,30,58,0.85)', color: 'white', fontSize: '0.7rem', textAlign: 'center', padding: '2px 0', fontWeight: 600 }}>
+                          Main
+                        </div>
+                      )}
+                      <button
+                        onClick={() => removePhoto(i)}
+                        style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                  {photos.length < 5 && (
+                    <label style={{ aspectRatio: '1', border: '2px dashed var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.75rem', gap: 4, background: '#FAFAFA' }}>
+                      <Upload size={20} />
+                      Add Photo
+                      <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handlePhotoAdd} />
+                    </label>
+                  )}
+                </div>
+                {photos.length < 2 && (
+                  <p style={{ color: 'var(--crimson)', fontSize: '0.78rem' }}>⚠️ Please upload at least 2 photos</p>
+                )}
+              </div>
+
               <div className="form-group">
                 <label className="form-label">About Me *</label>
-                <textarea className="form-textarea" placeholder="Tell potential matches about yourself — your interests, values, what makes you unique..." value={form.bio} onChange={e => set('bio', e.target.value)} rows={4} />
+                <textarea className="form-textarea" placeholder="Tell potential matches about yourself — your interests, values, what makes you unique..." value={form.bio} onChange={e => set('bio', e.target.value)} rows={3} />
               </div>
               <div className="form-group">
                 <label className="form-label">Looking For</label>

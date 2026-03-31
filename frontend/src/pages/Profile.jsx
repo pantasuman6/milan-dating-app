@@ -1,35 +1,40 @@
 import { useState, useEffect } from 'react';
-import { Camera, Save } from 'lucide-react';
+import { Camera, Save, X, Upload, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api';
 import { useAuth } from '../components/AuthContext';
 
-const NEPAL_DISTRICTS = [
-  'Kathmandu','Lalitpur','Bhaktapur','Pokhara','Chitwan','Butwal','Dharan','Biratnagar',
-  'Birgunj','Hetauda','Itahari','Janakpur','Nepalgunj','Dhangadhi','Mahendranagar',
-  'Syangja','Palpa','Baglung','Solukhumbu','Ilam','Jhapa','Morang','Sunsari',
-  'Saptari','Siraha','Dhanusa','Mahottari','Sarlahi','Rautahat','Bara','Parsa',
-  'Nawalpur','Rupandehi','Kapilvastu','Gulmi','Parbat','Kaski','Lamjung','Tanahu',
-  'Gorkha','Dhading','Nuwakot','Rasuwa','Sindhupalchok','Kavrepalanchok','Dolakha',
-  'Ramechhap','Sindhuli','Makwanpur','Okhaldhunga','Khotang','Udayapur','Bhojpur',
-  'Sankhuwasabha','Terhathum','Panchthar','Rolpa','Rukum','Salyan','Dang','Banke',
-  'Bardiya','Surkhet','Dailekh','Jajarkot','Dolpa','Humla','Jumla','Kalikot',
-  'Achham','Bajura','Bajhang','Doti','Kailali','Kanchanpur'
-];
+const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 export default function Profile() {
   const { user, refreshUser } = useAuth();
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [photos, setPhotos] = useState([]);
+  const [emailError, setEmailError] = useState('');
 
   useEffect(() => {
-    api.get('/profile/me').then(res => setForm(res.data)).catch(() => toast.error('Failed to load profile'));
+    api.get('/profile/me').then(res => {
+      setForm(res.data);
+      setPhotos(res.data.photos || []);
+    }).catch(() => toast.error('Failed to load profile'));
   }, []);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  const handleEmailChange = (e) => {
+    const val = e.target.value;
+    set('email', val);
+    if (val && !validateEmail(val)) {
+      setEmailError('Please enter a valid email address (e.g. name@example.com)');
+    } else {
+      setEmailError('');
+    }
+  };
+
   const handleSave = async () => {
+    if (emailError) return toast.error('Please fix the email address first');
     setSaving(true);
     try {
       await api.put('/profile/me', form);
@@ -42,21 +47,45 @@ export default function Profile() {
     }
   };
 
-  const handlePhoto = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const data = new FormData();
-    data.append('photo', file);
+  const handleAddPhotos = async (e) => {
+    const files = Array.from(e.target.files);
+    if (photos.length + files.length > 5) {
+      return toast.error('Maximum 5 photos allowed');
+    }
+    const formData = new FormData();
+    files.forEach(f => formData.append('photos', f));
     setUploading(true);
     try {
-      const res = await api.post('/profile/me/photo', data, { headers: { 'Content-Type': 'multipart/form-data' } });
-      setForm(f => ({ ...f, profile_pic: res.data.profile_pic }));
+      const token = localStorage.getItem('milan_token');
+      const res = await fetch('/api/profile/me/photos', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      toast.success(`${files.length} photo(s) uploaded! 📸`);
+      // Refresh profile photos
+      const updated = await api.get('/profile/me');
+      setPhotos(updated.data.photos || []);
       await refreshUser();
-      toast.success('Photo updated! 📸');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to upload photo');
+      toast.error(err.message || 'Failed to upload photos');
     } finally {
       setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDeletePhoto = async (photoId) => {
+    try {
+      await api.delete(`/profile/me/photos/${photoId}`);
+      toast.success('Photo removed');
+      const updated = await api.get('/profile/me');
+      setPhotos(updated.data.photos || []);
+      await refreshUser();
+    } catch {
+      toast.error('Failed to delete photo');
     }
   };
 
@@ -68,26 +97,57 @@ export default function Profile() {
         <h1 className="page-title">My Profile</h1>
         <p className="page-subtitle">Keep your profile up to date</p>
 
-        {/* Photo section */}
-        <div className="card" style={{ padding: 28, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 24 }}>
-          <div style={{ position: 'relative' }}>
-            {form.profile_pic
-              ? <img src={form.profile_pic} alt="Profile" style={{ width: 100, height: 100, borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--crimson)' }} />
-              : <div style={{ width: 100, height: 100, borderRadius: '50%', background: 'linear-gradient(135deg, #FDE8EC, #FAF0E6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.8rem', border: '3px solid var(--border)' }}>
-                  {form.gender === 'female' ? '👩' : form.gender === 'male' ? '👨' : '🧑'}
+        {/* Photos section */}
+        <div className="card" style={{ padding: 28, marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div>
+              <h3 style={{ marginBottom: 2 }}>My Photos</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{photos.length}/5 photos · Min 2 recommended</p>
+            </div>
+            {photos.length < 5 && (
+              <label className="btn btn-outline btn-sm" style={{ cursor: 'pointer' }}>
+                <Upload size={14} /> Add Photos
+                <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleAddPhotos} disabled={uploading} />
+              </label>
+            )}
+          </div>
+
+          {photos.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text-muted)', border: '2px dashed var(--border)', borderRadius: 12 }}>
+              <div style={{ fontSize: '2rem', marginBottom: 8 }}>📷</div>
+              <p style={{ fontSize: '0.85rem' }}>No photos yet — add at least 2 to attract matches</p>
+              <label className="btn btn-primary btn-sm" style={{ marginTop: 12, cursor: 'pointer' }}>
+                <Upload size={14} /> Upload Photos
+                <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleAddPhotos} />
+              </label>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10 }}>
+              {photos.map((photo, i) => (
+                <div key={photo.id} style={{ position: 'relative', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', border: photo.is_primary ? '3px solid var(--crimson)' : '2px solid var(--border)' }}>
+                  <img src={photo.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  {photo.is_primary && (
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(196,30,58,0.85)', color: 'white', fontSize: '0.68rem', textAlign: 'center', padding: '3px 0', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                      <Star size={10} /> Main
+                    </div>
+                  )}
+                  <button
+                    onClick={() => handleDeletePhoto(photo.id)}
+                    style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.65)', border: 'none', borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
+                  >
+                    <X size={13} />
+                  </button>
                 </div>
-            }
-            <label style={{ position: 'absolute', bottom: 0, right: 0, background: 'var(--crimson)', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}>
-              <Camera size={15} />
-              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhoto} />
-            </label>
-          </div>
-          <div>
-            <h3 style={{ marginBottom: 4 }}>{form.name}</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Member since {new Date(form.created_at).toLocaleDateString()}</p>
-            {uploading && <p style={{ color: 'var(--crimson)', fontSize: '0.82rem', marginTop: 4 }}>Uploading…</p>}
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: 6 }}>Max 5MB · JPG, PNG, WebP</p>
-          </div>
+              ))}
+              {photos.length < 5 && (
+                <label style={{ aspectRatio: '1', border: '2px dashed var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.72rem', gap: 4 }}>
+                  <Upload size={18} /> Add
+                  <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleAddPhotos} />
+                </label>
+              )}
+            </div>
+          )}
+          {uploading && <p style={{ color: 'var(--crimson)', fontSize: '0.82rem', marginTop: 10 }}>Uploading…</p>}
         </div>
 
         {/* Form */}
@@ -100,7 +160,15 @@ export default function Profile() {
             </div>
             <div className="form-group">
               <label className="form-label">Email</label>
-              <input className="form-input" value={form.email || ''} disabled style={{ opacity: 0.6 }} />
+              <input
+                className="form-input"
+                type="email"
+                value={form.email || ''}
+                onChange={handleEmailChange}
+                style={{ borderColor: emailError ? 'var(--crimson)' : undefined }}
+                disabled
+              />
+              {emailError && <p style={{ color: 'var(--crimson)', fontSize: '0.75rem', marginTop: 4 }}>⚠️ {emailError}</p>}
             </div>
             <div className="form-group">
               <label className="form-label">Age</label>
@@ -123,10 +191,13 @@ export default function Profile() {
 
           <div className="form-group">
             <label className="form-label">Location</label>
-            <select className="form-select" value={form.location || ''} onChange={e => set('location', e.target.value)}>
-              <option value="">Select District</option>
-              {NEPAL_DISTRICTS.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
+            <input
+              className="form-input"
+              placeholder="e.g. Kathmandu, Nepal · London, UK · Sydney, Australia"
+              value={form.location || ''}
+              onChange={e => set('location', e.target.value)}
+            />
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Enter your city and country</p>
           </div>
 
           <div className="form-group">
@@ -148,7 +219,7 @@ export default function Profile() {
             </select>
           </div>
 
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving || !!emailError}>
             <Save size={16} /> {saving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
