@@ -5,7 +5,9 @@ import api from '../api';
 
 function PhotoCarousel({ photos, profilePic, gender }) {
   const [idx, setIdx] = useState(0);
-  const allPhotos = photos?.length > 0 ? photos.map(p => p.photo_url) : (profilePic ? [profilePic] : []);
+  const allPhotos = photos?.length > 0
+    ? photos.map(p => p.photo_url)
+    : profilePic ? [profilePic] : [];
 
   if (allPhotos.length === 0) {
     return (
@@ -16,33 +18,28 @@ function PhotoCarousel({ photos, profilePic, gender }) {
   }
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: 220 }}>
-      <img
-        src={allPhotos[idx]}
-        alt=""
-        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-      />
+    <div style={{ position: 'relative', width: '100%', height: 220, background: '#f5f5f5' }}>
+      <img src={allPhotos[idx]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
       {allPhotos.length > 1 && (
         <>
-          <button
-            onClick={e => { e.stopPropagation(); setIdx(i => (i - 1 + allPhotos.length) % allPhotos.length); }}
-            style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', border: 'none', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
-          ><ChevronLeft size={16} /></button>
-          <button
-            onClick={e => { e.stopPropagation(); setIdx(i => (i + 1) % allPhotos.length); }}
-            style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', border: 'none', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
-          ><ChevronRight size={16} /></button>
+          <button onClick={e => { e.stopPropagation(); setIdx(i => (i - 1 + allPhotos.length) % allPhotos.length); }}
+            style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', border: 'none', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}>
+            <ChevronLeft size={16} />
+          </button>
+          <button onClick={e => { e.stopPropagation(); setIdx(i => (i + 1) % allPhotos.length); }}
+            style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'rgba(0,0,0,0.45)', border: 'none', borderRadius: '50%', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}>
+            <ChevronRight size={16} />
+          </button>
           <div style={{ position: 'absolute', bottom: 8, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5 }}>
             {allPhotos.map((_, i) => (
-              <div key={i} style={{ width: i === idx ? 16 : 6, height: 6, borderRadius: 3, background: i === idx ? 'white' : 'rgba(255,255,255,0.5)', transition: 'all 0.2s', cursor: 'pointer' }} onClick={e => { e.stopPropagation(); setIdx(i); }} />
+              <div key={i} onClick={e => { e.stopPropagation(); setIdx(i); }}
+                style={{ width: i === idx ? 16 : 6, height: 6, borderRadius: 3, background: i === idx ? 'white' : 'rgba(255,255,255,0.5)', transition: 'all 0.2s', cursor: 'pointer' }} />
             ))}
           </div>
+          <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.5)', color: 'white', fontSize: '0.72rem', padding: '2px 8px', borderRadius: 12, fontWeight: 600 }}>
+            {idx + 1}/{allPhotos.length}
+          </div>
         </>
-      )}
-      {allPhotos.length > 1 && (
-        <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.5)', color: 'white', fontSize: '0.72rem', padding: '2px 8px', borderRadius: 12, fontWeight: 600 }}>
-          {idx + 1}/{allPhotos.length}
-        </div>
       )}
     </div>
   );
@@ -60,7 +57,7 @@ function ProfileCard({ profile, onRequest }) {
       await onRequest(profile.id, msg);
       setSent(true);
       setModal(false);
-      toast.success(`Connection request sent to ${profile.name}! 🌸`);
+      toast.success(`Request sent to ${profile.name}! 🌸`);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to send request');
     } finally {
@@ -86,9 +83,7 @@ function ProfileCard({ profile, onRequest }) {
           )}
           {sent
             ? <span className="btn btn-ghost btn-sm btn-full" style={{ justifyContent: 'center', cursor: 'default' }}>✓ Request Sent</span>
-            : <button className="btn btn-primary btn-sm btn-full" onClick={() => setModal(true)}>
-                <Heart size={14} /> Connect
-              </button>
+            : <button className="btn btn-primary btn-sm btn-full" onClick={() => setModal(true)}><Heart size={14} /> Connect</button>
           }
         </div>
       </div>
@@ -97,7 +92,7 @@ function ProfileCard({ profile, onRequest }) {
         <div className="modal-overlay" onClick={() => setModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h3 className="modal-title">Connect with {profile.name}</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: 20 }}>Send a warm introduction!</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: 20 }}>Send a warm introduction — make it personal!</p>
             {profile.profile_pic
               ? <img src={profile.profile_pic} alt="" style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', marginBottom: 12 }} />
               : <div style={{ fontSize: '3rem', marginBottom: 12 }}>{profile.gender === 'female' ? '👩' : '👨'}</div>
@@ -106,19 +101,11 @@ function ProfileCard({ profile, onRequest }) {
             {profile.location && <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 16 }}><MapPin size={12} style={{ marginRight: 3 }} />{profile.location}</p>}
             <div className="form-group">
               <label className="form-label">Your Message (optional)</label>
-              <textarea
-                className="form-textarea"
-                placeholder={`Hi ${profile.name}! I came across your profile and would love to connect…`}
-                value={msg}
-                onChange={e => setMsg(e.target.value)}
-                rows={3}
-              />
+              <textarea className="form-textarea" placeholder={`Hi ${profile.name}! I came across your profile and would love to connect…`} value={msg} onChange={e => setMsg(e.target.value)} rows={3} />
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn-ghost" onClick={() => setModal(false)}>Cancel</button>
-              <button className="btn btn-primary btn-full" onClick={sendRequest} disabled={loading}>
-                {loading ? 'Sending...' : '🌸 Send Request'}
-              </button>
+              <button className="btn btn-primary btn-full" onClick={sendRequest} disabled={loading}>{loading ? 'Sending...' : '🌸 Send Request'}</button>
             </div>
           </div>
         </div>
@@ -151,24 +138,23 @@ export default function Browse() {
 
   useEffect(() => { fetchProfiles(); }, []);
 
+  const setFilter = (k, v) => setFilters(f => ({ ...f, [k]: v }));
   const sendRequest = async (receiverId, message) => {
     await api.post(`/connections/request/${receiverId}`, { message });
   };
-
-  const setFilter = (k, v) => setFilters(f => ({ ...f, [k]: v }));
 
   return (
     <div className="page">
       <div className="app-container">
         <h1 className="page-title">Discover People</h1>
-        <p className="page-subtitle">Find your साथी anywhere in the world</p>
+        <p className="page-subtitle">Find your साथी anywhere in the world 🌏</p>
 
         <div className="filter-bar">
           <div className="form-group">
             <label className="form-label">Location</label>
             <input
               className="form-input"
-              placeholder="e.g. London, Kathmandu, New York…"
+              placeholder="e.g. London, Kathmandu, New York, Sydney…"
               value={filters.location}
               onChange={e => setFilter('location', e.target.value)}
               onKeyDown={e => e.key === 'Enter' && fetchProfiles()}

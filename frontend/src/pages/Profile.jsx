@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Camera, Save, X, Upload, Star } from 'lucide-react';
+import { Save, X, Upload, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api';
 import { useAuth } from '../components/AuthContext';
@@ -7,7 +7,7 @@ import { useAuth } from '../components/AuthContext';
 const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 export default function Profile() {
-  const { user, refreshUser } = useAuth();
+  const { refreshUser } = useAuth();
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -23,18 +23,8 @@ export default function Profile() {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const handleEmailChange = (e) => {
-    const val = e.target.value;
-    set('email', val);
-    if (val && !validateEmail(val)) {
-      setEmailError('Please enter a valid email address (e.g. name@example.com)');
-    } else {
-      setEmailError('');
-    }
-  };
-
   const handleSave = async () => {
-    if (emailError) return toast.error('Please fix the email address first');
+    if (emailError) return toast.error('Fix the email address first');
     setSaving(true);
     try {
       await api.put('/profile/me', form);
@@ -49,9 +39,7 @@ export default function Profile() {
 
   const handleAddPhotos = async (e) => {
     const files = Array.from(e.target.files);
-    if (photos.length + files.length > 5) {
-      return toast.error('Maximum 5 photos allowed');
-    }
+    if (photos.length + files.length > 5) return toast.error('Maximum 5 photos allowed');
     const formData = new FormData();
     files.forEach(f => formData.append('photos', f));
     setUploading(true);
@@ -60,12 +48,11 @@ export default function Profile() {
       const res = await fetch('/api/profile/me/photos', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
-        body: formData
+        body: formData,
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       toast.success(`${files.length} photo(s) uploaded! 📸`);
-      // Refresh profile photos
       const updated = await api.get('/profile/me');
       setPhotos(updated.data.photos || []);
       await refreshUser();
@@ -97,7 +84,7 @@ export default function Profile() {
         <h1 className="page-title">My Profile</h1>
         <p className="page-subtitle">Keep your profile up to date</p>
 
-        {/* Photos section */}
+        {/* Photos */}
         <div className="card" style={{ padding: 28, marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div>
@@ -122,8 +109,8 @@ export default function Profile() {
               </label>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10 }}>
-              {photos.map((photo, i) => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 10 }}>
+              {photos.map((photo) => (
                 <div key={photo.id} style={{ position: 'relative', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', border: photo.is_primary ? '3px solid var(--crimson)' : '2px solid var(--border)' }}>
                   <img src={photo.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   {photo.is_primary && (
@@ -131,10 +118,8 @@ export default function Profile() {
                       <Star size={10} /> Main
                     </div>
                   )}
-                  <button
-                    onClick={() => handleDeletePhoto(photo.id)}
-                    style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.65)', border: 'none', borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
-                  >
+                  <button onClick={() => handleDeletePhoto(photo.id)}
+                    style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.65)', border: 'none', borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}>
                     <X size={13} />
                   </button>
                 </div>
@@ -150,7 +135,7 @@ export default function Profile() {
           {uploading && <p style={{ color: 'var(--crimson)', fontSize: '0.82rem', marginTop: 10 }}>Uploading…</p>}
         </div>
 
-        {/* Form */}
+        {/* Details */}
         <div className="card" style={{ padding: 28 }}>
           <h3 style={{ marginBottom: 20 }}>Edit Details</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -159,16 +144,8 @@ export default function Profile() {
               <input className="form-input" value={form.name || ''} onChange={e => set('name', e.target.value)} />
             </div>
             <div className="form-group">
-              <label className="form-label">Email</label>
-              <input
-                className="form-input"
-                type="email"
-                value={form.email || ''}
-                onChange={handleEmailChange}
-                style={{ borderColor: emailError ? 'var(--crimson)' : undefined }}
-                disabled
-              />
-              {emailError && <p style={{ color: 'var(--crimson)', fontSize: '0.75rem', marginTop: 4 }}>⚠️ {emailError}</p>}
+              <label className="form-label">Email (cannot change)</label>
+              <input className="form-input" value={form.email || ''} disabled style={{ opacity: 0.6 }} />
             </div>
             <div className="form-group">
               <label className="form-label">Age</label>
@@ -190,14 +167,14 @@ export default function Profile() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Location</label>
+            <label className="form-label">Your Location</label>
             <input
               className="form-input"
-              placeholder="e.g. Kathmandu, Nepal · London, UK · Sydney, Australia"
+              placeholder="e.g. Kathmandu, Nepal  |  London, UK  |  Sydney, Australia"
               value={form.location || ''}
               onChange={e => set('location', e.target.value)}
             />
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Enter your city and country</p>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Type your city and country — anywhere in the world</p>
           </div>
 
           <div className="form-group">

@@ -11,12 +11,12 @@ export default function Register() {
   const { register } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [photos, setPhotos] = useState([]);
   const [form, setForm] = useState({
     email: '', password: '', name: '', age: '', gender: '',
     job_title: '', bio: '', location: '', looking_for: '', match_gender_pref: 'any'
   });
-  const [emailError, setEmailError] = useState('');
-  const [photos, setPhotos] = useState([]); // { file, preview }
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -24,7 +24,7 @@ export default function Register() {
     const val = e.target.value;
     set('email', val);
     if (val && !validateEmail(val)) {
-      setEmailError('Please enter a valid email address (e.g. name@example.com)');
+      setEmailError('⚠️ Invalid email — use format: name@example.com');
     } else {
       setEmailError('');
     }
@@ -50,13 +50,13 @@ export default function Register() {
 
   const nextStep = () => {
     if (step === 1) {
-      if (!form.email || !form.password || !form.name) return toast.error('Please fill all required fields');
+      if (!form.name || !form.email || !form.password) return toast.error('Please fill all required fields');
       if (!validateEmail(form.email)) return toast.error('Please enter a valid email address');
       if (form.password.length < 6) return toast.error('Password must be at least 6 characters');
     }
     if (step === 2) {
       if (!form.age || !form.gender) return toast.error('Age and gender are required');
-      if (form.age < 18) return toast.error('You must be 18 or older');
+      if (parseInt(form.age) < 18) return toast.error('You must be 18 or older');
     }
     setStep(s => s + 1);
   };
@@ -64,21 +64,18 @@ export default function Register() {
   const handleSubmit = async () => {
     if (!form.bio) return toast.error('Please write a short bio');
     if (photos.length < 2) return toast.error('Please upload at least 2 photos');
-
     setLoading(true);
     try {
-      const { user } = await register(form);
-
-      // Upload photos after registration
+      await register(form);
+      // Upload photos
+      const token = localStorage.getItem('milan_token');
       const formData = new FormData();
       photos.forEach(p => formData.append('photos', p.file));
-      const token = localStorage.getItem('milan_token');
       await fetch('/api/profile/me/photos', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
-        body: formData
+        body: formData,
       });
-
       toast.success('Welcome to Milan! 🌸');
       navigate('/browse');
     } catch (err) {
@@ -102,7 +99,8 @@ export default function Register() {
         </div>
 
         <div className="card" style={{ padding: 32 }}>
-          {/* STEP 1 */}
+
+          {/* STEP 1 — Account */}
           {step === 1 && (
             <div className="fade-in">
               <h2 style={{ marginBottom: 6 }}>Account Details</h2>
@@ -119,11 +117,9 @@ export default function Register() {
                   placeholder="you@example.com"
                   value={form.email}
                   onChange={handleEmailChange}
-                  style={{ borderColor: emailError ? '#C41E3A' : undefined }}
+                  style={{ borderColor: emailError ? 'var(--crimson)' : undefined }}
                 />
-                {emailError && (
-                  <p style={{ color: 'var(--crimson)', fontSize: '0.78rem', marginTop: 5 }}>⚠️ {emailError}</p>
-                )}
+                {emailError && <p style={{ color: 'var(--crimson)', fontSize: '0.78rem', marginTop: 5 }}>{emailError}</p>}
               </div>
               <div className="form-group">
                 <label className="form-label">Password *</label>
@@ -132,7 +128,7 @@ export default function Register() {
             </div>
           )}
 
-          {/* STEP 2 */}
+          {/* STEP 2 — About You */}
           {step === 2 && (
             <div className="fade-in">
               <h2 style={{ marginBottom: 6 }}>About You</h2>
@@ -157,48 +153,45 @@ export default function Register() {
                 <input className="form-input" placeholder="e.g. Software Engineer, Teacher, Doctor" value={form.job_title} onChange={e => set('job_title', e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">Location</label>
+                <label className="form-label">Your Location</label>
                 <input
                   className="form-input"
-                  placeholder="e.g. Kathmandu, Nepal · London, UK · New York, USA"
+                  placeholder="e.g. Kathmandu, Nepal  |  London, UK  |  New York, USA"
                   value={form.location}
                   onChange={e => set('location', e.target.value)}
                 />
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Enter your city and country</p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Type your city and country anywhere in the world</p>
               </div>
             </div>
           )}
 
-          {/* STEP 3 */}
+          {/* STEP 3 — Story & Photos */}
           {step === 3 && (
             <div className="fade-in">
               <h2 style={{ marginBottom: 6 }}>Your Story & Photos</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 24 }}>Help people get to know you</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>Help people get to know you</p>
 
               {/* Photo Upload */}
               <div className="form-group">
                 <label className="form-label">
                   Photos * <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(min 2, max 5)</span>
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 8 }}>
                   {photos.map((p, i) => (
-                    <div key={i} style={{ position: 'relative', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', border: '2px solid var(--border)' }}>
+                    <div key={i} style={{ position: 'relative', aspectRatio: '1', borderRadius: 10, overflow: 'hidden', border: i === 0 ? '2px solid var(--crimson)' : '2px solid var(--border)' }}>
                       <img src={p.preview} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       {i === 0 && (
-                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(196,30,58,0.85)', color: 'white', fontSize: '0.7rem', textAlign: 'center', padding: '2px 0', fontWeight: 600 }}>
-                          Main
+                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(196,30,58,0.85)', color: 'white', fontSize: '0.68rem', textAlign: 'center', padding: '2px 0', fontWeight: 600 }}>
+                          Main Photo
                         </div>
                       )}
-                      <button
-                        onClick={() => removePhoto(i)}
-                        style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}
-                      >
+                      <button onClick={() => removePhoto(i)} style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'white' }}>
                         <X size={12} />
                       </button>
                     </div>
                   ))}
                   {photos.length < 5 && (
-                    <label style={{ aspectRatio: '1', border: '2px dashed var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.75rem', gap: 4, background: '#FAFAFA' }}>
+                    <label style={{ aspectRatio: '1', border: '2px dashed var(--border)', borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.72rem', gap: 4, background: '#FAFAFA' }}>
                       <Upload size={20} />
                       Add Photo
                       <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handlePhotoAdd} />
@@ -206,7 +199,7 @@ export default function Register() {
                   )}
                 </div>
                 {photos.length < 2 && (
-                  <p style={{ color: 'var(--crimson)', fontSize: '0.78rem' }}>⚠️ Please upload at least 2 photos</p>
+                  <p style={{ color: 'var(--crimson)', fontSize: '0.78rem' }}>⚠️ Please upload at least 2 photos so people can see you</p>
                 )}
               </div>
 
@@ -216,7 +209,7 @@ export default function Register() {
               </div>
               <div className="form-group">
                 <label className="form-label">Looking For</label>
-                <textarea className="form-textarea" placeholder="Describe your ideal match — personality, values, what kind of relationship you're looking for..." value={form.looking_for} onChange={e => set('looking_for', e.target.value)} rows={3} />
+                <textarea className="form-textarea" placeholder="Describe your ideal match — personality, values, type of relationship..." value={form.looking_for} onChange={e => set('looking_for', e.target.value)} rows={3} />
               </div>
               <div className="form-group">
                 <label className="form-label">Interested In</label>
@@ -232,8 +225,8 @@ export default function Register() {
           <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
             {step > 1 && <button className="btn btn-ghost" onClick={() => setStep(s => s - 1)}>Back</button>}
             {step < 3
-              ? <button className="btn btn-primary btn-full" onClick={nextStep}>Continue →</button>
-              : <button className="btn btn-primary btn-full" onClick={handleSubmit} disabled={loading}>{loading ? 'Creating Profile...' : '🌸 Create My Profile'}</button>
+              ? <button className="btn btn-primary btn-full" onClick={nextStep} disabled={step === 1 && !!emailError}>Continue →</button>
+              : <button className="btn btn-primary btn-full" onClick={handleSubmit} disabled={loading || photos.length < 2}>{loading ? 'Creating Profile...' : '🌸 Create My Profile'}</button>
             }
           </div>
         </div>
