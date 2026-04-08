@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../components/AuthContext';
 import { X, Upload } from 'lucide-react';
+import api from '../api';
 
 const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -66,16 +67,16 @@ export default function Register() {
     if (photos.length < 2) return toast.error('Please upload at least 2 photos');
     setLoading(true);
     try {
+      // Step 1: Register the user
       await register(form);
-      // Upload photos
-      const token = localStorage.getItem('milan_token');
+
+      // Step 2: Upload photos using api instance (handles Railway URL correctly)
       const formData = new FormData();
       photos.forEach(p => formData.append('photos', p.file));
-      await fetch('/api/profile/me/photos', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+      await api.post('/profile/me/photos', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
+
       toast.success('Welcome to Milan! 🌸');
       navigate('/browse');
     } catch (err) {
@@ -160,7 +161,7 @@ export default function Register() {
                   value={form.location}
                   onChange={e => set('location', e.target.value)}
                 />
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Type your city and country anywhere in the world</p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Type your city and country — anywhere in the world</p>
               </div>
             </div>
           )}
@@ -171,7 +172,6 @@ export default function Register() {
               <h2 style={{ marginBottom: 6 }}>Your Story & Photos</h2>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>Help people get to know you</p>
 
-              {/* Photo Upload */}
               <div className="form-group">
                 <label className="form-label">
                   Photos * <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(min 2, max 5)</span>
@@ -199,7 +199,7 @@ export default function Register() {
                   )}
                 </div>
                 {photos.length < 2 && (
-                  <p style={{ color: 'var(--crimson)', fontSize: '0.78rem' }}>⚠️ Please upload at least 2 photos so people can see you</p>
+                  <p style={{ color: 'var(--crimson)', fontSize: '0.78rem' }}>⚠️ Please upload at least 2 photos</p>
                 )}
               </div>
 
