@@ -15,31 +15,31 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Static uploads
+// Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/profile', require('./routes/profile'));
-app.use('/api/browse', require('./routes/browse'));
+app.use('/api/auth',        require('./routes/auth'));
+app.use('/api/profile',     require('./routes/profile'));
+app.use('/api/browse',      require('./routes/browse'));
 app.use('/api/connections', require('./routes/connections'));
-app.use('/api/messages', require('./routes/messages'));
+app.use('/api/messages',    require('./routes/messages'));
 
 // Health check
-app.get('/health', (req, res) => res.json({ status: 'ok', app: 'Milan Dating App', time: new Date() }));
+app.get('/health', (req, res) => res.json({ status: 'ok', app: 'Milan', time: new Date() }));
 
-// Start server
+// Start server — DB failure logs error but server still starts
 const start = async () => {
   try {
     await initDB();
-    app.listen(PORT, () => {
-      console.log(`\n🌸 Milan Backend running on http://localhost:${PORT}`);
-      console.log(`📊 Health check: http://localhost:${PORT}/health\n`);
-    });
   } catch (err) {
-    console.error('Failed to start server:', err);
-    process.exit(1);
+    console.error('⚠️  DB init warning:', err.message);
+    // Don't exit — server still starts so routes work
   }
+  app.listen(PORT, () => {
+    console.log(`\n🌸 Milan Backend running on http://localhost:${PORT}`);
+    console.log(`📊 Health: http://localhost:${PORT}/health\n`);
+  });
 };
 
 start();

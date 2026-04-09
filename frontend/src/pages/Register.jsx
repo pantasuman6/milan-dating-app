@@ -65,25 +65,36 @@ export default function Register() {
   const handleSubmit = async () => {
     if (!form.bio) return toast.error('Please write a short bio');
     if (photos.length < 2) return toast.error('Please upload at least 2 photos');
-    setLoading(true);
-    try {
-      // Step 1: Register the user
-      await register(form);
 
-      // Step 2: Upload photos using api instance (handles Railway URL correctly)
+    setLoading(true);
+
+    // ── Step 1: Register user (separate try/catch so errors show correctly) ──
+    try {
+      await register(form);
+    } catch (err) {
+      // This is the REAL registration error (email taken, server down, etc.)
+      toast.error(err.response?.data?.error || 'Registration failed — please try again');
+      setLoading(false);
+      return; // stop here, don't proceed to photo upload
+    }
+
+    // ── Step 2: Upload photos (separate — never blocks registration success) ──
+    try {
       const formData = new FormData();
       photos.forEach(p => formData.append('photos', p.file));
       await api.post('/profile/me/photos', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-
-      toast.success('Welcome to Milan! 🌸');
-      navigate('/browse');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Registration failed');
-    } finally {
-      setLoading(false);
+      // Photo upload failed but registration succeeded — still go to browse
+      // User can add photos later from their Profile page
+      console.error('Photo upload error:', err);
+      toast('Account created! You can add photos from your Profile page.', { icon: '📸' });
     }
+
+    setLoading(false);
+    toast.success('Welcome to Milan! 🌸');
+    navigate('/browse');
   };
 
   return (
@@ -101,7 +112,7 @@ export default function Register() {
 
         <div className="card" style={{ padding: 32 }}>
 
-          {/* STEP 1 — Account */}
+          {/* STEP 1 */}
           {step === 1 && (
             <div className="fade-in">
               <h2 style={{ marginBottom: 6 }}>Account Details</h2>
@@ -129,7 +140,7 @@ export default function Register() {
             </div>
           )}
 
-          {/* STEP 2 — About You */}
+          {/* STEP 2 */}
           {step === 2 && (
             <div className="fade-in">
               <h2 style={{ marginBottom: 6 }}>About You</h2>
@@ -166,7 +177,7 @@ export default function Register() {
             </div>
           )}
 
-          {/* STEP 3 — Story & Photos */}
+          {/* STEP 3 */}
           {step === 3 && (
             <div className="fade-in">
               <h2 style={{ marginBottom: 6 }}>Your Story & Photos</h2>
@@ -205,11 +216,11 @@ export default function Register() {
 
               <div className="form-group">
                 <label className="form-label">About Me *</label>
-                <textarea className="form-textarea" placeholder="Tell potential matches about yourself — your interests, values, what makes you unique..." value={form.bio} onChange={e => set('bio', e.target.value)} rows={3} />
+                <textarea className="form-textarea" placeholder="Tell potential matches about yourself..." value={form.bio} onChange={e => set('bio', e.target.value)} rows={3} />
               </div>
               <div className="form-group">
                 <label className="form-label">Looking For</label>
-                <textarea className="form-textarea" placeholder="Describe your ideal match — personality, values, type of relationship..." value={form.looking_for} onChange={e => set('looking_for', e.target.value)} rows={3} />
+                <textarea className="form-textarea" placeholder="Describe your ideal match..." value={form.looking_for} onChange={e => set('looking_for', e.target.value)} rows={3} />
               </div>
               <div className="form-group">
                 <label className="form-label">Interested In</label>
