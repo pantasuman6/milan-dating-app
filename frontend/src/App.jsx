@@ -11,6 +11,7 @@ import Requests from './pages/Requests';
 import Matches from './pages/Matches';
 import Messages from './pages/Messages';
 import Profile from './pages/Profile';
+import Admin from './pages/Admin';
 import api from './api';
 
 function PrivateRoute({ children }) {
@@ -24,14 +25,14 @@ function AppLayout() {
 
   useEffect(() => {
     if (!user) return;
-    const fetchPending = async () => {
+    const fetch_ = async () => {
       try {
         const res = await api.get('/connections/incoming');
         setPendingCount(res.data.filter(r => r.status === 'pending').length);
       } catch {}
     };
-    fetchPending();
-    const interval = setInterval(fetchPending, 30000);
+    fetch_();
+    const interval = setInterval(fetch_, 30000);
     return () => clearInterval(interval);
   }, [user]);
 
@@ -39,12 +40,13 @@ function AppLayout() {
     <>
       <Navbar pendingCount={pendingCount} />
       <Routes>
-        <Route path="/browse" element={<PrivateRoute><Browse /></PrivateRoute>} />
-        <Route path="/requests" element={<PrivateRoute><Requests /></PrivateRoute>} />
-        <Route path="/matches" element={<PrivateRoute><Matches /></PrivateRoute>} />
-        <Route path="/messages" element={<PrivateRoute><Messages /></PrivateRoute>} />
+        <Route path="/browse"           element={<PrivateRoute><Browse /></PrivateRoute>} />
+        <Route path="/requests"         element={<PrivateRoute><Requests /></PrivateRoute>} />
+        <Route path="/matches"          element={<PrivateRoute><Matches /></PrivateRoute>} />
+        <Route path="/messages"         element={<PrivateRoute><Messages /></PrivateRoute>} />
         <Route path="/messages/:userId" element={<PrivateRoute><Messages /></PrivateRoute>} />
-        <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+        <Route path="/profile"          element={<PrivateRoute><Profile /></PrivateRoute>} />
+        <Route path="/admin"            element={<PrivateRoute><Admin /></PrivateRoute>} />
       </Routes>
     </>
   );
@@ -54,12 +56,24 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Toaster position="top-right" toastOptions={{ style: { fontFamily: 'DM Sans, sans-serif', fontSize: '0.88rem' } }} />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#1C1C21',
+              color: '#F0F0F5',
+              border: '1px solid #2A2A32',
+              fontFamily: 'Outfit, sans-serif',
+              fontSize: '0.875rem',
+            },
+            success: { iconTheme: { primary: '#D4A853', secondary: '#0C0C0F' } },
+          }}
+        />
         <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
+          <Route path="/"         element={<Landing />} />
+          <Route path="/login"    element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/*" element={<AppLayout />} />
+          <Route path="/*"        element={<AppLayout />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

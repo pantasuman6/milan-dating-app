@@ -1,46 +1,46 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
-import { Heart, Search, Bell, MessageCircle, User, LogOut } from 'lucide-react';
+import { Compass, Bell, Heart, MessageCircle, User, LogOut, ShieldCheck } from 'lucide-react';
 
 export default function Navbar({ pendingCount = 0 }) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
-
-  const isActive = (path) => location.pathname === path ? 'nav-link active' : 'nav-link';
+  const isAdmin = user?.email === import.meta.env.VITE_ADMIN_EMAIL || user?.is_admin;
+  const isActive = (path) => location.pathname.startsWith(path) ? 'nav-link active' : 'nav-link';
 
   if (!user) return null;
 
   return (
     <nav className="navbar">
-      <div className="app-container navbar-inner">
-        <Link to="/browse" className="brand">
-          मिलन <span>Milan</span>
-        </Link>
+      <div className="container navbar-inner">
+        <Link to="/browse" className="brand">मिलन</Link>
+
         <div className="nav-links">
           <Link to="/browse" className={isActive('/browse')}>
-            <Search size={16} /> Discover
+            <Compass size={16} /><span>Discover</span>
           </Link>
-          <Link to="/requests" className={isActive('/requests')}>
-            <Bell size={16} /> Requests
-            {pendingCount > 0 && <span className="badge">{pendingCount}</span>}
+          <Link to="/requests" className={isActive('/requests')} style={{ position: 'relative' }}>
+            <Bell size={16} /><span>Requests</span>
+            {pendingCount > 0 && <span className="nav-badge">{pendingCount}</span>}
           </Link>
           <Link to="/matches" className={isActive('/matches')}>
-            <Heart size={16} /> Matches
+            <Heart size={16} /><span>Matches</span>
           </Link>
           <Link to="/messages" className={isActive('/messages')}>
-            <MessageCircle size={16} /> Messages
+            <MessageCircle size={16} /><span>Messages</span>
           </Link>
           <Link to="/profile" className={isActive('/profile')}>
-            <User size={16} /> Profile
+            <User size={16} /><span>Profile</span>
           </Link>
-          <button className="nav-link logout" onClick={handleLogout}>
-            <LogOut size={16} /> Logout
+          {isAdmin && (
+            <Link to="/admin" className={`nav-link admin-link ${location.pathname === '/admin' ? 'active' : ''}`}>
+              <ShieldCheck size={16} /><span>Admin</span>
+            </Link>
+          )}
+          <button className="nav-link logout" onClick={() => { logout(); navigate('/'); }}>
+            <LogOut size={16} /><span>Out</span>
           </button>
         </div>
       </div>
