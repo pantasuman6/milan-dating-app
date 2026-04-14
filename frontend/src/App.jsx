@@ -22,23 +22,30 @@ function PrivateRoute({ children }) {
 function AppLayout() {
   const { user } = useAuth();
   const [pendingCount, setPendingCount] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!user) return;
-    const fetch_ = async () => {
+
+    // Check if admin by probing the endpoint
+    api.get('/admin/stats')
+      .then(() => setIsAdmin(true))
+      .catch(() => setIsAdmin(false));
+
+    const fetchPending = async () => {
       try {
         const res = await api.get('/connections/incoming');
         setPendingCount(res.data.filter(r => r.status === 'pending').length);
       } catch {}
     };
-    fetch_();
-    const interval = setInterval(fetch_, 30000);
+    fetchPending();
+    const interval = setInterval(fetchPending, 30000);
     return () => clearInterval(interval);
   }, [user]);
 
   return (
     <>
-      <Navbar pendingCount={pendingCount} />
+      <Navbar pendingCount={pendingCount} isAdmin={isAdmin} />
       <Routes>
         <Route path="/browse"           element={<PrivateRoute><Browse /></PrivateRoute>} />
         <Route path="/requests"         element={<PrivateRoute><Requests /></PrivateRoute>} />
