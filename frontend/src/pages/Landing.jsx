@@ -71,7 +71,7 @@ export default function Landing() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 2, position: 'relative' }}>
             {[
-              { step: '01', icon: <Sparkles size={24} />, title: 'Build your profile', desc: 'Upload your best photos, write about yourself honestly, and describe what you're looking for.' },
+              { step: '01', icon: <Sparkles size={24} />, title: 'Build your profile', desc: "Upload your best photos, write about yourself honestly, and describe what you're looking for." },
               { step: '02', icon: <Heart size={24} />, title: 'Send a request', desc: 'Browse profiles and send a personal connection request with a message — no swiping, just intention.' },
               { step: '03', icon: <MessageCircle size={24} />, title: 'Start talking', desc: 'Once accepted, chat freely and get to know each other at your own pace.' },
             ].map((item, i) => (
